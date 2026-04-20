@@ -194,10 +194,32 @@ def render_text_block(block, links):
         level = "h1" if avg_size > 18 else "h2"
         return f"<{level}>{inner}</{level}>"
 
-    # Split content by newlines — each line becomes its own paragraph
-    lines = content.split("\n")
+    # Rejoin lines broken mid-sentence (PDF column wrapping artifact)
+    def rejoin_lines(text):
+        raw_lines = text.split("\n")
+        result = []
+        current = ""
+        for line in raw_lines:
+            line = line.strip()
+            if not line:
+                if current:
+                    result.append(current)
+                    current = ""
+                continue
+            if not current:
+                current = line
+            elif not any(current.endswith(p) for p in ('.', '!', '?', '"', '\u201d', '\u2026', ',')):
+                current += " " + line
+            else:
+                result.append(current)
+                current = line
+        if current:
+            result.append(current)
+        return result
+
+    lines = rejoin_lines(content)
     if len(lines) > 1:
-        return "".join(f"<p>{escape_html(line.strip())}</p>" for line in lines if line.strip())
+        return "".join(f"<p>{escape_html(line)}</p>" for line in lines)
 
     return f"<p>{inner}</p>"
 
